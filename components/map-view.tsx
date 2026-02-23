@@ -173,12 +173,13 @@ export default function MapView() {
   const [viewState, setViewState] = useState({ longitude: 10, latitude: 30, zoom: 2.5 });
   const [mapStyle,  setMapStyle]  = useState<StyleSpecification | null>(null);
 
-  const [query,        setQuery]        = useState("");
-  const [results,      setResults]      = useState<NominatimResult[]>([]);
-  const [isSearching,  setIsSearching]  = useState(false);
-  const [selectedName, setSelectedName] = useState<string | null>(null);
-  const [isCapturing,  setIsCapturing]  = useState(false);
-  const [captured,     setCaptured]     = useState(false);
+  const [query,            setQuery]            = useState("");
+  const [results,          setResults]          = useState<NominatimResult[]>([]);
+  const [isSearching,      setIsSearching]      = useState(false);
+  const [highlightedIndex, setHighlightedIndex] = useState(-1);
+  const [selectedName,     setSelectedName]     = useState<string | null>(null);
+  const [isCapturing,      setIsCapturing]      = useState(false);
+  const [captured,         setCaptured]         = useState(false);
 
   // ── Load Apple-styled vector map ─────────────────────────────────────────
   useEffect(() => {
@@ -201,6 +202,9 @@ export default function MapView() {
         });
       });
   }, []);
+
+  // Reset highlight whenever results change
+  useEffect(() => { setHighlightedIndex(-1); }, [results]);
 
   // ── Debounced Nominatim geocoding ─────────────────────────────────────────
   useEffect(() => {
@@ -319,6 +323,27 @@ export default function MapView() {
     inputRef.current?.focus();
   }, []);
 
+  const handleInputKeyDown = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "ArrowDown") {
+      if (results.length === 0) return;
+      e.preventDefault();
+      setHighlightedIndex(i => Math.min(i + 1, results.length - 1));
+    } else if (e.key === "ArrowUp") {
+      if (results.length === 0) return;
+      e.preventDefault();
+      setHighlightedIndex(i => Math.max(i - 1, -1));
+    } else if (e.key === "Enter") {
+      if (highlightedIndex >= 0 && results[highlightedIndex]) {
+        e.preventDefault();
+        flyTo(results[highlightedIndex]);
+      }
+    } else if (e.key === "Escape") {
+      setQuery("");
+      setResults([]);
+      inputRef.current?.blur();
+    }
+  }, [results, highlightedIndex, flyTo]);
+
   // ── Screenshot ────────────────────────────────────────────────────────────
   const capture = useCallback(() => {
     const map = mapRef.current?.getMap();
@@ -406,10 +431,12 @@ export default function MapView() {
               ref={inputRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
+              onKeyDown={handleInputKeyDown}
               placeholder="Search any location…"
               aria-label="Search location"
               aria-autocomplete="list"
               aria-controls="search-results"
+              aria-activedescendant={highlightedIndex >= 0 ? `search-result-${highlightedIndex}` : undefined}
               className="border-0 bg-transparent p-0 h-auto shadow-none focus-visible:ring-0 text-sm text-neutral-800 placeholder:text-neutral-500"
             />
             <AnimatePresence>
@@ -443,15 +470,24 @@ export default function MapView() {
                 className="mt-2 bg-white/90 backdrop-blur-xl rounded-2xl shadow-xl shadow-black/10 border border-white/60 overflow-hidden list-none p-0"
               >
                 {results.map((r, i) => (
-                  <motion.li key={r.place_id} role="option" aria-selected="false">
+                  <motion.li
+                    key={r.place_id}
+                    id={`search-result-${i}`}
+                    role="option"
+                    aria-selected={i === highlightedIndex}
+                  >
                     <motion.button
                       initial={{ opacity: 0, x: -4 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: i * 0.04, duration: 0.15 }}
                       onClick={() => flyTo(r)}
-                      className="w-full flex items-start gap-3 px-4 py-3 hover:bg-neutral-50/80 active:bg-neutral-100/80 transition-colors text-left group"
+                      className={`w-full flex items-start gap-3 px-4 py-3 transition-colors text-left group ${
+                        i === highlightedIndex
+                          ? "bg-neutral-100/90"
+                          : "hover:bg-neutral-50/80 active:bg-neutral-100/80"
+                      }`}
                     >
-                      <MapPin className="w-3.5 h-3.5 text-neutral-500 group-hover:text-neutral-700 mt-0.5 shrink-0 transition-colors" aria-hidden="true" />
+                      <MapPin className={`w-3.5 h-3.5 mt-0.5 shrink-0 transition-colors ${i === highlightedIndex ? "text-neutral-700" : "text-neutral-500 group-hover:text-neutral-700"}`} aria-hidden="true" />
                       <span className="text-sm text-neutral-700 line-clamp-2 leading-snug">
                         {r.display_name}
                       </span>
