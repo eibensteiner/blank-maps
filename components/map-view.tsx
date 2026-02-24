@@ -703,6 +703,32 @@ export default function MapView() {
         </Button>
       </motion.div>
 
+      {/* Zoom controls – bottom right */}
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.2, duration: 0.4, ease: [0.25, 0.46, 0.45, 0.94] }}
+        className="absolute bottom-8 right-8 z-10 flex items-center bg-white/85 backdrop-blur-xl border border-white/60 shadow-xl shadow-black/10 rounded-2xl overflow-hidden"
+      >
+        <button
+          onClick={() => mapRef.current?.getMap().zoomOut({ duration: 200 })}
+          aria-label="Zoom out"
+          className="h-11 w-11 flex items-center justify-center text-neutral-600 hover:bg-neutral-100/80 hover:text-neutral-900 transition-colors text-lg font-light select-none"
+        >
+          −
+        </button>
+        <span className="w-12 text-center text-sm font-medium text-neutral-700 tabular-nums select-none">
+          {viewState.zoom.toFixed(1)}
+        </span>
+        <button
+          onClick={() => mapRef.current?.getMap().zoomIn({ duration: 200 })}
+          aria-label="Zoom in"
+          className="h-11 w-11 flex items-center justify-center text-neutral-600 hover:bg-neutral-100/80 hover:text-neutral-900 transition-colors text-lg font-light select-none"
+        >
+          +
+        </button>
+      </motion.div>
+
       {/* Theme button – bottom left */}
       <motion.div
         initial={{ opacity: 0, y: 16 }}
